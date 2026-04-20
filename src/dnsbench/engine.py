@@ -2,22 +2,33 @@ import multiprocessing
 import time
 import dns.query
 import os
+import socket
 
 def worker(msg_wire: bytes, server: str, port: str, query_count: int, result_queue: multiprocessing.Queue):
-    msg = dns.message.from_wire(msg_wire)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(5.0)
+    print(f"Worker {os.getpid()} starting {query_count} queries")
+    local_results = []
     for _ in range(query_count):
         try:
-            response = dns.query.udp(msg, server, port=port, timeout=5.0)
-            result_queue.put({
-                "latency": response.time,
-                "rcode": response.rcode(),
-            })
-        except dns.exception.Timeout:
-            result_queue.put({"error": "timeout"})
-        except Exception as e:
-            result_queue.put({"error": str(e)})
-    print(f"Worker {os.getpid()} done")
+            start = time.perf_counter()
+            sock.sendto(msg_wire, (server, port))
+            data, _ = sock_recvfrom(4096)
+            elapsed = time.perf_counter() - start
 
+            local_results.append({
+                "latency": elapsed,
+                "rcode": data[3] & 0x0F,
+            })
+        except socket.timeout:
+            local.results.append({"error": "timeout"})
+        except Exception as e:
+            local_results.append({"error": str(e)})
+
+    sock.close()
+    result_queue.put(local_results)
+    print(f"Worker {os.getpid()} done")
+            
 def run_benchmark(messages: list[bytes], server: str, port: int, total_queries: int, num_workers: int):
     result_queue = multiprocessing.Queue()
     queries_per_worker = total_queries // num_workers
