@@ -4,7 +4,7 @@ import dns.query
 import os
 import socket
 
-def worker(msg_wire: bytes, server: str, port: str, query_count: int, result_queue: multiprocessing.Queue):
+def worker(msg_wire: bytes, server: str, port: int, query_count: int, result_queue: multiprocessing.Queue):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(5.0)
     print(f"Worker {os.getpid()} starting {query_count} queries")
@@ -13,7 +13,7 @@ def worker(msg_wire: bytes, server: str, port: str, query_count: int, result_que
         try:
             start = time.perf_counter()
             sock.sendto(msg_wire, (server, port))
-            data, _ = sock_recvfrom(4096)
+            data, _ = sock.recvfrom(4096)
             elapsed = time.perf_counter() - start
 
             local_results.append({
@@ -21,7 +21,7 @@ def worker(msg_wire: bytes, server: str, port: str, query_count: int, result_que
                 "rcode": data[3] & 0x0F,
             })
         except socket.timeout:
-            local.results.append({"error": "timeout"})
+            local_results.append({"error": "timeout"})
         except Exception as e:
             local_results.append({"error": str(e)})
 
@@ -46,18 +46,14 @@ def run_benchmark(messages: list[bytes], server: str, port: int, total_queries: 
         p.start()
 
     results = []
-    expected = queries_per_worker * num_workers
-    while len(results) < expected:
-        try:
-            results.append(result_queue.get(timeout=0.1))
-        except Exception:
-            if not any(p.is_alive() for p in processes):
-                break
+    for _ in range(num_workers):
+        batch = result_queue.get()
+        results.extend(batch)
 
     for p in processes:
         p.join()
-
     elapsed = time.time() - start
+        
     print(f"Completed {len(results)} queries in {elapsed:.2f}s")
     print(f"Effective QPS: {len(results) / elapsed:.1f}")
 
