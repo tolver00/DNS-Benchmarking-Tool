@@ -1,6 +1,7 @@
 import argparse
 from packet import build_messages
 from engine import run_benchmark
+from metrics import process_results, print_report
 
 # presets
 PRESETS = {
@@ -33,6 +34,12 @@ if __name__ == "__main__":
     config["port"] = args.port
 
     messages = build_messages(config)
-    results = run_benchmark(messages, config["server"], config["port"], args.queries, args.workers)
-
+    results, elapsed = run_benchmark(messages, config["server"], config["port"], args.queries, args.workers)
+    report = process_results(results)
+    print_report(report, elapsed)
+    # for r in results[:10]:
+    #     print(r)
+    # for key, value in report.items():
+    #     print(f"{key}: {value}")
+    
 

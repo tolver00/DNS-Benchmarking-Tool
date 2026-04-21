@@ -7,7 +7,7 @@ import socket
 def worker(msg_wire: bytes, server: str, port: int, query_count: int, result_queue: multiprocessing.Queue):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(5.0)
-    print(f"Worker {os.getpid()} starting {query_count} queries")
+    # print(f"Worker {os.getpid()} starting {query_count} queries")
     local_results = []
     for _ in range(query_count):
         try:
@@ -27,7 +27,8 @@ def worker(msg_wire: bytes, server: str, port: int, query_count: int, result_que
 
     sock.close()
     result_queue.put(local_results)
-    print(f"Worker {os.getpid()} done")
+    # print(f"Worker {os.getpid()} done") 
+    
             
 def run_benchmark(messages: list[bytes], server: str, port: int, total_queries: int, num_workers: int):
     result_queue = multiprocessing.Queue()
@@ -54,7 +55,7 @@ def run_benchmark(messages: list[bytes], server: str, port: int, total_queries: 
         p.join()
     elapsed = time.time() - start
         
-    print(f"Completed {len(results)} queries in {elapsed:.2f}s")
-    print(f"Effective QPS: {len(results) / elapsed:.1f}")
+    # print(f"Completed {len(results)} queries in {elapsed:.2f}s")
+    # print(f"Effective QPS: {len(results) / elapsed:.1f}")
 
-    return results 
+    return results, elapsed
