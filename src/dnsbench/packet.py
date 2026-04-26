@@ -5,6 +5,7 @@ import dns.rdatatype
 
 def build_messages(config: dict) -> list[bytes]:
     messages = []
+    rdtype_names = []
     for rdtype in config["rdatatypes"]: 
         msg = dns.message.make_query(
             qname=config["domain"],
@@ -14,4 +15,5 @@ def build_messages(config: dict) -> list[bytes]:
         )
         msg.flags &= ~dns.flags.RD
         messages.append(msg.to_wire())
-    return messages
+        rdtype_names.append(rdtype)
+    return messages, rdtype_names

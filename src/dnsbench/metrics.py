@@ -1,6 +1,6 @@
 import statistics
 
-def process_results(results: list[dict]) -> dict:
+def process_results(results: list[dict], rdtype_names: list[str]) -> dict:
     success = []
     error = []
     for r in results:
@@ -40,18 +40,20 @@ def process_results(results: list[dict]) -> dict:
 
     return report
         
-def print_report(report: dict, elapsed: float):
+def print_report(report: dict, elapsed: float, protocol: str, server: str, port: int):
     total = report["total_queries"]
     if elapsed > 0:
         qps = total / elapsed
     else:
-        pass
+        qps = 0.0
 
 
     ## format output
     print("\n====================================================")
     print("|               DNS Benchmark Results                |")
     print("======================================================")
+    print(f"Target:         {server}: {port}")
+    print(f"Protocol:       {protocol.upper()}")
     print(f"Total Quries:   {total}")
     print(f"Successful:     {report['successful']}")
     print(f"Errors:         {report['errors']}")
@@ -80,6 +82,6 @@ def print_report(report: dict, elapsed: float):
             pct = count / total * 100
         else:
             pass
-    print(f"    {name:<15}{count:>8} ({pct:.1f}%)")
-    print("====================================================")
+        print(f"    {name:<15}{count:>8} ({pct:.1f}%)")
+        print("====================================================")
     
