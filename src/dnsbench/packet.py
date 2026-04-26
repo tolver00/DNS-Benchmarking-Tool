@@ -3,7 +3,7 @@ import dns.query
 import dns.rdatatype
 
 
-def build_messages(config: dict) -> list[bytes]:
+def build_messages(config: dict) -> tuple[list[bytes], list[str]]:
     messages = []
     rdtype_names = []
     for rdtype in config["rdatatypes"]: 

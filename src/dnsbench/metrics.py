@@ -38,9 +38,27 @@ def process_results(results: list[dict], rdtype_names: list[str]) -> dict:
         rcodes[code] = rcodes.get(code, 0) + 1
     report["rcodes"] = rcodes
 
+    per_type = {}
+    for r in success:
+        name = rdtype_names[r["msg_index"]]
+        if name not in per_type:
+            per_type[name] = []
+        per_type[name].append(r["latency"])
+    
+    # per record stats
+    type_stats = {}
+    for name, lats in per_type.items():
+        lats.sort()
+        type_stats[name] = {
+            "count": len(lats),
+            "mean": statistics.mean(lats),
+            "p95": lats[int(len(lats) * 0.95)],
+        }
+    report["per_type"] = type_stats
+    
     return report
         
-def print_report(report: dict, elapsed: float, protocol: str, server: str, port: int):
+def print_report(report: dict, elapsed: float, protocol: str, server: str, port: int, verbose: bool = False):
     total = report["total_queries"]
     if elapsed > 0:
         qps = total / elapsed
@@ -85,3 +103,9 @@ def print_report(report: dict, elapsed: float, protocol: str, server: str, port:
         print(f"    {name:<15}{count:>8} ({pct:.1f}%)")
         print("====================================================")
     
+    if verbose and "per_type" in report:
+        print("====================================================")
+        print("Per Record Type")
+        for name, stats in report["per_type"].items():
+            print(f"    {name:<8} count: {stats['count']:>8} mean: {stats['mean']*1000:.3f}ms p95: {stats['p95']*1000:.3f}ms")
+            

@@ -35,9 +35,9 @@ if __name__ == "__main__":
     config["server"] = args.server
     config["port"] = args.port
 
-    messages = build_messages(config)
+    messages, rdtype_names = build_messages(config)
     results, elapsed = run_benchmark(messages, config["server"], config["port"], args.queries, args.workers, args.protocol)
-    report = process_results(results)
+    report = process_results(results, rdtype_names)
     print_report(report, elapsed, args.protocol, args.server, args.port, args.verbose)
     # for r in results[:10]:
     #     print(r)
