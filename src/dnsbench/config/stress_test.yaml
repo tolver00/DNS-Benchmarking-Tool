@@ -1,0 +1,15 @@
+# config/example_stress.yaml
+host:
+  server: 127.0.0.1
+  port: 5301
+  domain: bench.test
+args:
+  protocol: tcp
+  workers: 8
+mode:
+  count: 50000
+rdatatypes:
+  - A
+  - AAAA
+  - MX
+  - NS

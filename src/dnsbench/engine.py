@@ -4,7 +4,7 @@ import dns.query
 import os
 import socket
 
-def worker(messages: bytes, server: str, port: int, query_count: int, protocol: str, result_queue: multiprocessing.Queue):
+def worker(messages, server, port, query_count, mode, protocol, result_queue, deadline):
     if protocol == "udp":
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     elif protocol == "tcp":
@@ -17,8 +17,13 @@ def worker(messages: bytes, server: str, port: int, query_count: int, protocol: 
 
     num_messages = len(messages)
     local_results = []
+    i = 0
     try:
-        for i in range(query_count):
+        while True:
+            if mode == "count" and i >= query_count:
+                break
+            if mode == "duration" and time.time() >= deadline:
+                break
             msg_wire = messages[i % num_messages]
             try:
                 start = time.perf_counter()
@@ -30,8 +35,8 @@ def worker(messages: bytes, server: str, port: int, query_count: int, protocol: 
                     sock.sendall(length + msg_wire)
                     resp_len = int.from_bytes(sock.recv(2), "big")
                     data = sock.recv(resp_len)
-                    
-                   
+
+
                 elapsed = time.perf_counter() - start
                 local_results.append({
                     "latency": elapsed,
@@ -42,22 +47,27 @@ def worker(messages: bytes, server: str, port: int, query_count: int, protocol: 
                 local_results.append({"error": "timeout", "msg_index": i % num_messages})
             except Exception as e:
                 local_results.append({"error": str(e), "msg_index": i % num_messages})
-
+            i += 1
     finally:
         sock.close()
     result_queue.put(local_results)
     # print(f"Worker {os.getpid()} done") 
     
             
-def run_benchmark(messages: list[bytes], server: str, port: int, total_queries: int, num_workers: int, protocol: str):
+def run_benchmark(messages, server, port, total_queries, num_workers, protocol, mode, duration):
     result_queue = multiprocessing.Queue()
-    queries_per_worker = total_queries // num_workers
+    if mode == "duration":
+        deadline = time.time() + duration
+    else:
+        deadline = 0
+    
+    queries_per_worker = total_queries // num_workers if mode == "count" else 0
 
     processes = []
     for i in range(num_workers):
         p = multiprocessing.Process(
             target=worker,
-            args=(messages, server, port, queries_per_worker, protocol, result_queue),
+            args=(messages, server, port, queries_per_worker, mode, protocol, result_queue, deadline),
         )
         processes.append(p)
     start = time.time()

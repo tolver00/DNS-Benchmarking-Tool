@@ -72,7 +72,7 @@ def print_report(report: dict, elapsed: float, protocol: str, server: str, port:
     print("======================================================")
     print(f"Target:         {server}: {port}")
     print(f"Protocol:       {protocol.upper()}")
-    print(f"Total Quries:   {total}")
+    print(f"Total Queries:  {total}")
     print(f"Successful:     {report['successful']}")
     print(f"Errors:         {report['errors']}")
     print(f"Error Rate:     {report['error_rate']:.2%}")
