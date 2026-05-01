@@ -3,6 +3,7 @@ import yaml
 from packet import build_messages
 from engine import run_benchmark
 from metrics import process_results, print_report
+from output import write_csv, write_json, write_sqlite
 
 # presets
 PRESETS = {
@@ -52,6 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("--workers", "-w", type=int, default=4)
     parser.add_argument("--verbose", "-v", action='store_true', help="Print verbose output")
     parser.add_argument("--duration", "-D", type=int, help="Run for N seconds in duration mode")
+    parser.add_argument("--output", "-o", type=str, help="Output to file in PATH (.json, .csv, .db)")
     parser.add_argument("--config", "-c", )
     args = parser.parse_args()
 
@@ -66,7 +68,7 @@ if __name__ == "__main__":
             config["port"] = args.port
         if args.protocol != "udp":
             config["protocol"] = args.protocol
-        if args.workers != 8:
+        if args.workers != 4:
             config["workers"] = args.workers
         if args.duration:
             config["exec_mode"] = "duration"
@@ -98,3 +100,16 @@ if __name__ == "__main__":
     )
     report = process_results(results, rdtype_names)
     print_report(report, elapsed, config["protocol"], config["server"], config["port"], args.verbose)
+
+    # output to file
+    if args.output:
+        if args.output.endswith(".json"):
+            write_json(report, elapsed, config, args.output)
+        elif args.output.endswith(".csv"):
+            write_csv(report, elapsed, config, args.output)
+        elif args.output.endswith(".db"):
+            write_sqlite(report, elapsed, config, rdtype_names, results, args.output)
+
+
+
+    

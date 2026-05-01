@@ -7,7 +7,7 @@ args:
   protocol: tcp
   workers: 8
 mode:
-  count: 50000
+  count: 60000
 rdatatypes:
   - A
   - AAAA
