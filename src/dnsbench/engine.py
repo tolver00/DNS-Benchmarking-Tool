@@ -3,6 +3,17 @@ import time
 import dns.query
 import os
 import socket
+import ctypes
+
+## query class for ctypes
+class QueryResult(ctypes.Structure):
+    _fields_ = [
+        ("latency", ctypes.c_double),
+        ("rcode", ctypes.c_int),
+        ("success", ctypes.c_int),
+        ("msg_index", ctypes.c_int),
+    ]
+
 
 def worker(messages, server, port, query_count, mode, protocol, result_queue, deadline):
     if protocol == "udp":
@@ -83,7 +94,82 @@ def run_benchmark(messages, server, port, total_queries, num_workers, protocol, 
         p.join()
     elapsed = time.time() - start
         
-    # print(f"Completed {len(results)} queries in {elapsed:.2f}s")
-    # print(f"Effective QPS: {len(results) / elapsed:.1f}")
+    return results, elapsed
+
+def worker_native(lib_path, messages, server, port, query_count, protocol, result_queue):
+    lib = ctypes.CDLL(lib_path)
+
+    # args types
+    lib.run_queries.argtypes = [
+        ctypes.POINTER(ctypes.c_char_p), # messages
+        ctypes.POINTER(ctypes.c_int), # message length
+        ctypes.c_int, # number messages
+        ctypes.c_char_p, # server ip
+        ctypes.c_int, # port
+        ctypes.c_int, # query_count
+        ctypes.c_double, # timeout
+        ctypes.POINTER(QueryResult), # results
+    ]
+    lib.run_queries.restype = ctypes.c_int
+
+    num_msgs = len(messages)
+    msg_array = (ctypes.c_char_p * num_msgs)(*messages)
+    lengths = []
+    for m in messages:
+        lengths.append(len(m))
+    len_array = (ctypes.c_int * num_msgs)(*lengths)
+
+    # alocate resulrs
+    results = (QueryResult * query_count)()
+    
+    completed = lib.run_queries(
+        msg_array, len_array, num_msgs,
+        server.encode(), port, query_count, 5.0, results
+    )
+
+    # convert to dicts same as normal worker
+    local_results = []
+    for i in range(completed):
+        r = results[i]
+        if r.success:
+            local_results.append({
+                "latency": r.latency,
+                "rcode": r.rcode,
+                "msg_index": r.msg_index,
+            })
+        else:
+            local_results.append({
+                "error": "timeout",
+                "msg_index": r.msg_index,
+            })
+    result_queue.put(local_results)
+
+
+def run_benchmark_native(messages, server, port, total_queries, num_workers):
+    result_queue = multiprocessing.Queue()
+    queries_per_worker = total_queries // num_workers
+
+    lib_path = os.path.join(os.path.dirname(__file__), "worker.so")
+
+    processes = []
+    for i in range(num_workers):
+        p = multiprocessing.Process(
+            target=worker_native,
+            args=(lib_path, messages, server, port, queries_per_worker, "udp", result_queue),
+        )
+        processes.append(p)
+
+    start = time.time()
+    for p in processes:
+        p.start()
+
+    results = []
+    for _ in range(num_workers):
+        batch = result_queue.get()
+        results.extend(batch)
+
+    for p in processes:
+        p.join()
+    elapsed = time.time() - start
 
     return results, elapsed

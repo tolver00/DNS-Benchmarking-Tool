@@ -50,7 +50,7 @@ def write_csv(report, elapsed, config, path):
         "duration": round(elapsed, 3),
         "qps": round(qps, 1),
         "latency_min": round(lat.get("min", 0) * 1000, 3),
-        "latnecy_max": round(lat.get("max, 0")* 1000, 3),
+        "latency_max": round(lat.get("max", 0) * 1000, 3),
         "latency_mean": round(lat.get("mean", 0) * 1000, 3),
         "latency_median": round(lat.get("median", 0) * 1000, 3),
         "latency_p95": round(lat.get("p95", 0) * 1000, 3),

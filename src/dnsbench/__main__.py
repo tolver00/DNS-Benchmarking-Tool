@@ -1,7 +1,7 @@
 import argparse
 import yaml
 from packet import build_messages
-from engine import run_benchmark
+from engine import run_benchmark, run_benchmark_native
 from metrics import process_results, print_report
 from output import write_csv, write_json, write_sqlite
 
@@ -44,17 +44,18 @@ def load_yaml_config(path):
 if __name__ == "__main__":
     # user arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--server", "-s", default=None)
-    parser.add_argument("--protocol", "-P", default="udp")
-    parser.add_argument("--domain", "-d", default=None)
-    parser.add_argument("--mode", "-m", default="quick_run", choices=["quick_run", "stress_run", "mixed_run"])
-    parser.add_argument("--port", "-p", type=int, default=53)
-    parser.add_argument("--queries", "-q", type=int, default=10000)
-    parser.add_argument("--workers", "-w", type=int, default=4)
+    parser.add_argument("--server", "-s", default=None, help="Target DNS server IP address")
+    parser.add_argument("--protocol", "-P", default="udp", help="Network protocol to target (defaults to UDP)")
+    parser.add_argument("--domain", "-d", default=None, help="Target domain to query")
+    parser.add_argument("--mode", "-m", default="quick_run", help="Mode presets for test runs", choices=["quick_run", "stress_run", "mixed_run"])
+    parser.add_argument("--port", "-p", type=int, default=53, help="Target port (defaults to 53)")
+    parser.add_argument("--queries", "-q", type=int, default=10000, help="Amount of queries executed in run (defaults to 10000)")
+    parser.add_argument("--workers", "-w", type=int, default=4, help="Amount of workers to execute queries (defaults to 4). See documentation for explanation of setting")
     parser.add_argument("--verbose", "-v", action='store_true', help="Print verbose output")
     parser.add_argument("--duration", "-D", type=int, help="Run for N seconds in duration mode")
     parser.add_argument("--output", "-o", type=str, help="Output to file in PATH (.json, .csv, .db)")
-    parser.add_argument("--config", "-c", )
+    parser.add_argument("--config", "-c", help="Point to YAML config in PATH")
+    parser.add_argument("--native", "-n", action="store_true", help="Running in native will increase performance and QPS (only works with UDP)")
     args = parser.parse_args()
 
     # config parsing
@@ -83,21 +84,32 @@ if __name__ == "__main__":
             "workers": args.workers,
             "rdatatypes": preset["rdatatypes"],
             "exec_mode": "duration" if args.duration else "count",
-            "queries": "args.queries",
+            "queries": args.queries,
             "duration": args.duration if args.duration else 0,
         }
 
     messages, rdtype_names = build_messages(config)
-    results, elapsed = run_benchmark(
-        messages,
-        config["server"],
-        config["port"],
-        config.get("queries", 0),
-        config["workers"],
-        config["protocol"],
-        mode=config["exec_mode"],
-        duration=config.get("duration", 0)
-    )
+
+    # run type
+    if args.native:
+        results, elapsed = run_benchmark_native(
+            messages,
+            config["server"],
+            config["port"],
+            config.get("queries", 0),
+            config["workers"],
+            )
+    else:
+        results, elapsed = run_benchmark(
+            messages,
+            config["server"],
+            config["port"],
+            config.get("queries", 0),
+            config["workers"],
+            config["protocol"],
+            mode=config["exec_mode"],
+            duration=config.get("duration", 0)
+        )
     report = process_results(results, rdtype_names)
     print_report(report, elapsed, config["protocol"], config["server"], config["port"], args.verbose)
 
@@ -110,6 +122,6 @@ if __name__ == "__main__":
         elif args.output.endswith(".db"):
             write_sqlite(report, elapsed, config, rdtype_names, results, args.output)
 
-
+    
 
     
