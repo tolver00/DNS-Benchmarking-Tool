@@ -3,5 +3,5 @@
 
 **Compiling worker.c**
 ```bash
-gcc -O2 -shared -fPIC -o dns_[worker.so](http://worker.so) dns_worker.c
+gcc -O2 -shared -fPIC -o worker.so dns_worker.c
 ```
