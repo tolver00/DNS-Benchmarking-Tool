@@ -3,7 +3,7 @@ import yaml
 from packet import build_messages
 from engine import run_benchmark, run_benchmark_native
 from metrics import process_results, print_report
-from output import write_csv, write_json, write_sqlite
+from output import write_csv, write_json, write_sqlite, write_html
 
 # presets
 PRESETS = {
@@ -121,7 +121,8 @@ if __name__ == "__main__":
             write_csv(report, elapsed, config, args.output)
         elif args.output.endswith(".db"):
             write_sqlite(report, elapsed, config, rdtype_names, results, args.output)
-
+        elif args.output.endswith(".html"):
+            write_html(report, elapsed, config, rdtype_names, results, args.output)
     
 
     

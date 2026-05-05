@@ -3,6 +3,8 @@ import csv
 import sqlite3
 import os
 from datetime import datetime
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def write_json(report, elapsed, config, path):
@@ -150,3 +152,108 @@ def write_sqlite(report, elapsed, config, rdtype_names, results, path):
     conn.close()
     
     
+def write_html(report, elapsed, config, results, rdtype_names, path):
+    if elapsed > 0:
+        qps = report["total_queries"] / elapsed
+    else:
+        qps = 0
+
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=(
+            "Latency Distribution",
+            "Latency Percent",
+            "Per Record Type",
+            "RCODE Distribution",
+        ),
+        specs=[
+            [{"type": "histogram"}, {"type": "bar"}],
+            [{"type": "bar"}, {"type": "pie"}],
+            
+        ]
+    )
+
+    latencies = []
+    for r in results:
+        if "latency" in r:
+            latencies.append(r["latency"] * 1000)
+
+    fig.add_trace(
+        go.Histogram(x=latencies, nbinsx=50, name="Latency",
+                     marker_color="#636EFA"),
+        row=1, col=1
+    )
+
+
+    if "latency" in report:
+        lat = report["latency"]
+        labels = ["Min", "Median", "Mean", "P95", "P99", "Max"]
+        values = [
+            lat["min"] *1000,
+            lat["median"] *1000,
+            lat ["mean"] * 1000,
+            lat["p95"] * 1000,
+            lat["p99"] * 1000,
+            lat["max"] * 1000,
+        ]
+        fig.add_trace(
+            go.Bar(x=labels, y=values, name="Percent",
+                   marker_color="#EF553B"),
+            row=1, col=2
+        )
+
+        
+    if "per_type" in report:
+        types = list(report["per_type"].keys())
+        means = []
+        p95s = []
+        for t in types:
+            means.append(report["per_type"][t]["mean"] * 1000)
+            p95s.append(report["per_type"][t]["p95"] * 1000)
+
+
+        fig.add_trace(
+            go.Bar(x=types, y=means, name="Mean", marker_color="#636EFA"),
+            row=2, col=1
+        )
+        fig.add_trace(
+            go.Bar(x=types, y=p95s, name="P95", marker_color="#636EFA"),
+            row=2, col=1
+        )
+
+    rcode_map = {0: "NOERROR", 2: "SERVFAIL", 3: "NXDOMAIN", 5: "REFUSED"}
+    rcode_labels = []
+    rcode_values = []
+    for code, count in report["rcodes"].items():
+        name = rcode_map.get(int(code), f"RCODE_{code}")
+        rcode_labels.append(name)
+        rcode_values.append(count)
+
+    fig.add_trace(
+        go.Pie(labels=rcode_labels, values=rcode_values, name="RCODE"),
+        row=2, col=2
+    )
+
+    # layout
+    fig.update_layout(
+        title_text=(
+            f"DNS Benchmark Report - {config['server']}: {config['port']} - "
+            f"({config['protocol'].upper()}) - "
+            f"{report['total_queries']} queries: {qps:.0f})"
+        ),
+        showlegend=True,
+        height=800,
+        template="plotly_dark",
+    )
+
+
+    fig.update_xaxes(title_text="Latency (ms)", row=1, col=1)
+    fig.update_yaxes(title_text="Count", row=1, col=1)
+    fig.update_xaxes(title_text="Percent", row=1, col=2)
+    fig.update_yaxes(title_text="Latency (ms)", row=1, col=2)
+    fig.update_xaxes(title_text="Record Type", row=2, col=1)
+    fig.update_yaxes(title_text="Latency (ms)", row=2, col=1)
+
+    fig.write_html(path)
+
+        
