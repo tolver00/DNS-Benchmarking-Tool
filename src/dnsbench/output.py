@@ -36,7 +36,10 @@ def write_json(report, elapsed, config, path):
 
 
 def write_csv(report, elapsed, config, path):
-    qps = report["total_queries"] / elapsed if elapsed > 0 else 0
+    if elapsed > 0:
+        qps = report["total_queries"] / elapsed
+    else:
+        qps = 0
     lat = report.get("latency", {})
     row = {
         "timestamp": datetime.now().isoformat(),
@@ -106,7 +109,10 @@ def write_sqlite(report, elapsed, config, rdtype_names, results, path):
     )
     """)
     lat = report.get("latency", {})
-    qps = report["total_queries"] / elapsed if elapsed > 0 else 0
+    if elapsed > 0:
+        qps = report["total_queries"] /elapsed
+    else:
+        qps = 0
 
     c.execute("""
     INSERT INTO runs (timestamp, server, port, protocol, workers, mode, total_queries, successful, errors, error_rate, duration, qps, latency_min, latency_max, latency_mean, latency_median, latency_p95, latency_p99)
@@ -134,7 +140,7 @@ def write_sqlite(report, elapsed, config, rdtype_names, results, path):
     run_id = c.lastrowid
     rows = []
     for r in results:
-        if "msg_index" in results:
+        if "msg_index" in r:
             index = r.get("msg_index", 0)
             rdtype = rdtype_names[index]
         else:

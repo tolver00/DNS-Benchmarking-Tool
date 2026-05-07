@@ -62,7 +62,7 @@ def worker(messages, server, port, query_count, mode, protocol, result_queue, de
     finally:
         sock.close()
     result_queue.put(local_results)
-    # print(f"Worker {os.getpid()} done") 
+
     
             
 def run_benchmark(messages, server, port, total_queries, num_workers, protocol, mode, duration):

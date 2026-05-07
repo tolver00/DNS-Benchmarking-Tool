@@ -99,7 +99,7 @@ def print_report(report: dict, elapsed: float, protocol: str, server: str, port:
         if total > 0:
             pct = count / total * 100
         else:
-            pass
+            pct = 0
         print(f"    {name:<15}{count:>8} ({pct:.1f}%)")
         print("====================================================")
     
