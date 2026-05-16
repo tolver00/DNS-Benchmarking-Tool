@@ -1,6 +1,5 @@
 import multiprocessing
 import time
-import dns.query
 import os
 import socket
 import ctypes
