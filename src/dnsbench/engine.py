@@ -70,8 +70,12 @@ def run_benchmark(messages, server, port, total_queries, num_workers, protocol, 
         deadline = time.time() + duration
     else:
         deadline = 0
+
+    if mode == "count":
+        queries_per_worker = total_queries // num_workers
+    else:
+        queries_per_worker = 0
     
-    queries_per_worker = total_queries // num_workers if mode == "count" else 0
 
     processes = []
     for i in range(num_workers):
